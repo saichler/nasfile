@@ -20,8 +20,9 @@ cd ../../../../l8secure/go/secure/plugin/
 mv ../provider/loader.so $pw/.
 cd $pw
 zip -r fileManager.zip ./fileManager ./web ./loader.so
-#scp fileManager.zip $1:/root/fileManager.zip
 rm fileManager
 rm loader.so
+
+scp fileManager.zip $1:/root/fileManager.zip
 
 mv fileManager.zip $pw1/.

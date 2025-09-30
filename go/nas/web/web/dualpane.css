@@ -386,6 +386,21 @@ body {
     height: 24px;
 }
 
+.status-center {
+    flex: 1;
+    text-align: center;
+}
+
+.developer-info {
+    font-size: 11px;
+    color: var(--text-muted);
+    opacity: 0.7;
+}
+
+.developer-info strong {
+    color: var(--text-secondary);
+}
+
 .status-right {
     display: flex;
     align-items: center;

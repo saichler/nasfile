@@ -57,6 +57,8 @@ func TestFileServer(t *testing.T) {
 
 	jsn, _ = protojson.Marshal(resp)
 	fmt.Println("resp: ", string(jsn))
+
+	time.Sleep(time.Second * 300)
 }
 
 func createRestClient(t *testing.T, pb interface{}, prefix string) (*client.RestClient, bool) {

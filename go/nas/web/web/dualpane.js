@@ -2,19 +2,33 @@
 class FileManagerAPI {
     constructor() {
         this.baseUrl = '';
+        this.authToken = sessionStorage.getItem('authToken');
     }
 
     async request(endpoint, options = {}) {
+        // Check if authenticated
+        if (!this.authToken) {
+            window.location.href = '/';
+            throw new Error('Not authenticated');
+        }
+
         try {
             const response = await fetch(`${this.baseUrl}${endpoint}`, {
                 ...options,
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.authToken}`,
                     ...options.headers
                 }
             });
 
             if (!response.ok) {
+                // If unauthorized, redirect to login
+                if (response.status === 401 || response.status === 403) {
+                    sessionStorage.removeItem('authToken');
+                    window.location.href = '/';
+                    throw new Error('Authentication required');
+                }
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
@@ -811,6 +825,11 @@ class FileManager {
     }
 
     initToolbar() {
+        // Logout button
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            this.logout();
+        });
+
         // Copy button
         document.getElementById('copyBtn').addEventListener('click', () => {
             this.copySelected();
@@ -1324,10 +1343,21 @@ class FileManager {
     hideProgressModal() {
         this.closeModal('progressModal');
     }
+
+    logout() {
+        sessionStorage.removeItem('authToken');
+        window.location.href = '/';
+    }
 }
 
 // Initialize file manager when DOM is ready
 let fileManager;
 document.addEventListener('DOMContentLoaded', () => {
+    // Check if authenticated
+    if (!sessionStorage.getItem('authToken')) {
+        window.location.href = '/';
+        return;
+    }
+
     fileManager = new FileManager();
 });

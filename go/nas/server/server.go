@@ -12,6 +12,7 @@ import (
 	"github.com/saichler/l8reflect/go/reflect/introspecting"
 	"github.com/saichler/l8services/go/services/manager"
 	"github.com/saichler/l8types/go/ifs"
+	"github.com/saichler/l8types/go/types/l8api"
 	"github.com/saichler/l8types/go/types/l8health"
 	"github.com/saichler/l8types/go/types/l8sysconfig"
 	"github.com/saichler/l8types/go/types/l8web"
@@ -76,6 +77,8 @@ func startWebServer(port int, cert string) {
 	_, err = nic.Resources().Services().Activate(server.ServiceTypeName, ifs.WebService,
 		0, nic.Resources(), nic, svr)
 
+	nic.WaitForConnection()
+
 	nic.Resources().Logger().Info("Web Server Started!")
 
 	svr.Start()
@@ -84,7 +87,7 @@ func startWebServer(port int, cert string) {
 func Resources(alias string) ifs.IResources {
 	log := logger.NewLoggerImpl(&logger.FmtLogMethod{})
 	log.SetLogLevel(ifs.Error_Level)
-	res := resources.NewResources(log)
+	res := resources.NewResourcesWithUser(log, &l8api.AuthUser{User: "root", Pass: "!AI$410or6~"})
 
 	res.Set(registry.NewRegistry())
 
