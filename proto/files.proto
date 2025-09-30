@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package types;
+
+option java_multiple_files = true;
+option java_outer_classname = "Types";
+option java_package = "com.types.files";
+option go_package = "./types/files";
+
+message FileList {
+  repeated File fiels = 1;
+  uint64 totalSpace = 2;
+  uint64 freeSpace = 3;
+}
+
+message File {
+  string path = 1;
+  string name = 2;
+  int64 size = 3;
+  int64 modified = 4;
+  string type = 5;
+  bool isDirectory = 6;
+}
+
+enum ActionType {
+  invalid = 0;
+  copy = 1;
+  cut = 2;
+  rename = 3;
+  delete = 4;
+  newFolder = 5;
+}
+
+message Action {
+  ActionType action = 1;
+  File source = 2;
+  File target = 3;
+}
+
+message ActionResponse {
+  bool isError = 1;
+  string msg = 2;
+}
