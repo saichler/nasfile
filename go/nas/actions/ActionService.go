@@ -3,8 +3,11 @@ package actions
 import (
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/saichler/l8srlz/go/serialize/object"
@@ -219,4 +222,52 @@ func (this *ActionService) WebService() ifs.IWebService {
 	ws := web.New(ServiceName, ServiceArea, &files.Action{},
 		&files.ActionResponse{}, nil, nil, nil, nil, nil, nil, nil, nil)
 	return ws
+}
+
+// DownloadHandler handles file download requests
+func DownloadHandler(w http.ResponseWriter, r *http.Request, resources ifs.IResources) {
+	// Extract path from query parameter
+	filePath := r.URL.Query().Get("path")
+	if filePath == "" {
+		http.Error(w, "Missing path parameter", http.StatusBadRequest)
+		return
+	}
+
+	// Clean the path to prevent path traversal attacks
+	cleanPath := filepath.Clean(filePath)
+
+	// Check if file exists and is not a directory
+	fileInfo, err := os.Stat(cleanPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			http.Error(w, "File not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "Error accessing file", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	if fileInfo.IsDir() {
+		http.Error(w, "Cannot download a directory", http.StatusBadRequest)
+		return
+	}
+
+	// Open the file
+	file, err := os.Open(cleanPath)
+	if err != nil {
+		http.Error(w, "Error opening file", http.StatusInternalServerError)
+		return
+	}
+	defer file.Close()
+
+	// Set headers for download
+	w.Header().Set("Content-Disposition", "attachment; filename=\""+filepath.Base(cleanPath)+"\"")
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", fileInfo.Size()))
+
+	// Stream file to response
+	_, err = io.Copy(w, file)
+	if err != nil {
+		resources.Logger().Error("Error streaming file: ", err)
+	}
 }

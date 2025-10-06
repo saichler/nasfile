@@ -1,6 +1,7 @@
 package server
 
 import (
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -77,6 +78,9 @@ func startWebServer(port int, cert string) {
 	_, err = nic.Resources().Services().Activate(server.ServiceTypeName, ifs.WebService,
 		0, nic.Resources(), nic, svr)
 
+	// Register download endpoint
+	registerDownloadEndpoint(nic.Resources())
+
 	nic.Resources().Logger().Info("Web Server Started!")
 
 	svr.Start()
@@ -85,7 +89,7 @@ func startWebServer(port int, cert string) {
 func Resources(alias string) ifs.IResources {
 	log := logger.NewLoggerImpl(&logger.FmtLogMethod{})
 	log.SetLogLevel(ifs.Error_Level)
-	res := resources.NewResourcesWithUser(log, &l8api.AuthUser{User: "root", Pass: "!AI$410or6~"})
+	res := resources.NewResourcesWithUser(log, &l8api.AuthUser{User: "admin", Pass: "Admin123!"})
 
 	res.Set(registry.NewRegistry())
 
@@ -116,4 +120,10 @@ func WaitForSignal(resources ifs.IResources) {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	sig := <-sigs
 	resources.Logger().Info("End signal received! ", sig)
+}
+
+func registerDownloadEndpoint(resources ifs.IResources) {
+	http.HandleFunc("/files/download", func(w http.ResponseWriter, r *http.Request) {
+		actions.DownloadHandler(w, r, resources)
+	})
 }
