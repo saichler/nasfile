@@ -145,6 +145,8 @@ func doDelete(ac *files.Action) ifs.IElements {
 		sourcePath = sourcePath[1:]
 	}
 
+	sourcePath = "\"" + sourcePath + "\""
+
 	script := "bash -c 'rm -rf " + sourcePath + "'"
 	os.WriteFile("script.sh", []byte(script), 0777)
 	cmd := exec.Command("bash", "-c", "./script.sh")
@@ -176,6 +178,7 @@ func doNewFolder(ac *files.Action) ifs.IElements {
 	if strings.HasSuffix(sourcePath, "//") {
 		sourcePath = sourcePath[1:]
 	}
+	sourcePath = "\"" + sourcePath + "\""
 
 	script := "bash -c 'mkdir -p " + sourcePath + "'"
 	os.WriteFile("script.sh", []byte(script), 0777)

@@ -85,7 +85,7 @@ func startWebServer(port int, cert string) {
 func Resources(alias string) ifs.IResources {
 	log := logger.NewLoggerImpl(&logger.FmtLogMethod{})
 	log.SetLogLevel(ifs.Error_Level)
-	res := resources.NewResourcesWithUser(log, &l8api.AuthUser{User: "admin", Pass: "Admin123!"})
+	res := resources.NewResourcesWithUser(log, &l8api.AuthUser{User: "root", Pass: "!AI$410or6~"})
 
 	res.Set(registry.NewRegistry())
 
