@@ -124,6 +124,18 @@ func WaitForSignal(resources ifs.IResources) {
 
 func registerDownloadEndpoint(resources ifs.IResources) {
 	http.HandleFunc("/files/download", func(w http.ResponseWriter, r *http.Request) {
+		// Check authentication
+		bearer := r.Header.Get("Authorization")
+		if bearer == "" {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		_, ok := resources.Security().ValidateToken(bearer)
+		if !ok {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
 		actions.DownloadHandler(w, r, resources)
 	})
 }

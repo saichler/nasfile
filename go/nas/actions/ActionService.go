@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -261,7 +262,10 @@ func DownloadHandler(w http.ResponseWriter, r *http.Request, resources ifs.IReso
 	defer file.Close()
 
 	// Set headers for download
-	w.Header().Set("Content-Disposition", "attachment; filename=\""+filepath.Base(cleanPath)+"\"")
+	fileName := filepath.Base(cleanPath)
+	// Properly encode filename for Content-Disposition header (RFC 5987)
+	// This handles spaces, special characters, and non-ASCII characters
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename*=UTF-8''%s", encodeRFC5987(fileName)))
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", fileInfo.Size()))
 
@@ -270,4 +274,14 @@ func DownloadHandler(w http.ResponseWriter, r *http.Request, resources ifs.IReso
 	if err != nil {
 		resources.Logger().Error("Error streaming file: ", err)
 	}
+}
+
+// encodeRFC5987 encodes a string according to RFC 5987
+// This is used for encoding filenames in Content-Disposition headers
+func encodeRFC5987(s string) string {
+	// URL encode but keep certain characters that are allowed in RFC 5987
+	encoded := url.QueryEscape(s)
+	// RFC 5987 allows certain characters that QueryEscape encodes
+	encoded = strings.ReplaceAll(encoded, "+", "%20")
+	return encoded
 }

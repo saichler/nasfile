@@ -860,6 +860,11 @@ class FileManager {
             this.renameSelected();
         });
 
+        // Download button
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            this.downloadSelected();
+        });
+
         // Refresh button
         document.getElementById('refreshBtn').addEventListener('click', () => {
             this.refreshAll();
@@ -1017,11 +1022,22 @@ class FileManager {
         const hasSelection = this.activePane && this.activePane.selectedFiles.size > 0;
         const hasClipboard = this.clipboard.files.length > 0;
 
+        // Check if selection contains only files (no directories) for download
+        let canDownload = false;
+        if (hasSelection) {
+            const selectedFiles = Array.from(this.activePane.selectedFiles);
+            canDownload = selectedFiles.every(name => {
+                const file = this.activePane.files.find(f => f.name === name);
+                return file && !file.isDirectory;
+            });
+        }
+
         document.getElementById('copyBtn').disabled = !hasSelection;
         document.getElementById('cutBtn').disabled = !hasSelection;
         document.getElementById('pasteBtn').disabled = !hasClipboard;
         document.getElementById('deleteBtn').disabled = !hasSelection;
         document.getElementById('renameBtn').disabled = !hasSelection || this.activePane.selectedFiles.size !== 1;
+        document.getElementById('downloadBtn').disabled = !canDownload;
     }
 
     copySelected() {
@@ -1243,6 +1259,18 @@ class FileManager {
             pasteItem.style.opacity = this.clipboard.files.length > 0 ? '1' : '0.5';
             pasteItem.style.pointerEvents = this.clipboard.files.length > 0 ? '' : 'none';
         }
+
+        // Disable download if selection contains directories
+        const downloadItem = menu.querySelector('[data-action="download"]');
+        if (downloadItem && this.activePane) {
+            const selectedFiles = Array.from(this.activePane.selectedFiles);
+            const canDownload = selectedFiles.every(name => {
+                const file = this.activePane.files.find(f => f.name === name);
+                return file && !file.isDirectory;
+            });
+            downloadItem.style.opacity = canDownload ? '1' : '0.5';
+            downloadItem.style.pointerEvents = canDownload ? '' : 'none';
+        }
     }
 
     handleContextAction(action) {
@@ -1266,6 +1294,9 @@ class FileManager {
                 break;
             case 'delete':
                 this.deleteSelected();
+                break;
+            case 'download':
+                this.downloadSelected();
                 break;
             case 'properties':
                 this.showProperties();
@@ -1293,6 +1324,163 @@ class FileManager {
         } finally {
             this.hideProgressModal();
         }
+    }
+
+    async downloadSelected() {
+        if (!this.activePane || this.activePane.selectedFiles.size === 0) return;
+
+        const selectedFiles = Array.from(this.activePane.selectedFiles);
+        console.log('Selected files:', selectedFiles);
+        console.log('Available files in pane:', this.activePane.files);
+
+        const filesToDownload = selectedFiles.filter(name => {
+            const file = this.activePane.files.find(f => f.name === name);
+            console.log(`Checking file "${name}":`, file);
+            if (file) {
+                console.log(`  isDirectory: ${file.isDirectory}`);
+                console.log(`  Full file object:`, file);
+            }
+            return file && !file.isDirectory;
+        });
+
+        console.log('Files to download:', filesToDownload);
+
+        if (filesToDownload.length === 0) {
+            this.showStatus('Cannot download directories. Please select files only.', 'error');
+            return;
+        }
+
+        // Download each file sequentially with progress indication
+        for (let i = 0; i < filesToDownload.length; i++) {
+            const fileName = filesToDownload[i];
+            const filePath = this.activePane.getFilePath(fileName);
+
+            if (filesToDownload.length > 1) {
+                this.showProgressModal(`Downloading ${i + 1} of ${filesToDownload.length}: ${fileName}`);
+            } else {
+                this.showProgressModal(`Downloading ${fileName}...`);
+            }
+
+            try {
+                await this.downloadFile(filePath);
+            } catch (error) {
+                console.error(`Failed to download ${fileName}:`, error);
+                this.showStatus(`Failed to download ${fileName}: ${error.message}`, 'error');
+            }
+        }
+
+        this.hideProgressModal();
+        this.showStatus(`Downloaded ${filesToDownload.length} file(s) successfully`);
+    }
+
+    async downloadFile(filePath) {
+        const url = `/files/download?path=${encodeURIComponent(filePath)}`;
+        const fileName = filePath.split('/').pop();
+
+        try {
+            const response = await fetch(url, {
+                headers: {
+                    'Authorization': `Bearer ${this.api.authToken}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Download failed: ${response.statusText}`);
+            }
+
+            // Get total file size from Content-Length header
+            const contentLength = response.headers.get('Content-Length');
+            const totalBytes = contentLength ? parseInt(contentLength) : 0;
+
+            if (!totalBytes) {
+                // If no content length, fall back to simple download without progress
+                const blob = await response.blob();
+                this.triggerBrowserDownload(blob, fileName);
+                return;
+            }
+
+            // Track progress
+            let downloadedBytes = 0;
+            const chunks = [];
+            const reader = response.body.getReader();
+            const startTime = Date.now();
+
+            // Update progress
+            while (true) {
+                const { done, value } = await reader.read();
+
+                if (done) break;
+
+                chunks.push(value);
+                downloadedBytes += value.length;
+
+                // Calculate progress
+                const progress = (downloadedBytes / totalBytes) * 100;
+                const elapsedSeconds = (Date.now() - startTime) / 1000;
+                const bytesPerSecond = downloadedBytes / elapsedSeconds;
+                const remainingBytes = totalBytes - downloadedBytes;
+                const remainingSeconds = remainingBytes / bytesPerSecond;
+
+                // Format speed
+                const speed = this.formatSpeed(bytesPerSecond);
+                const remaining = this.formatTime(remainingSeconds);
+                const downloaded = this.formatBytes(downloadedBytes);
+                const total = this.formatBytes(totalBytes);
+
+                // Update progress modal
+                this.updateProgressModal(
+                    `Downloading ${fileName}`,
+                    progress,
+                    `${downloaded} / ${total} - ${speed} - ${remaining} remaining`
+                );
+            }
+
+            // Create blob from chunks
+            const blob = new Blob(chunks);
+            this.triggerBrowserDownload(blob, fileName);
+
+        } catch (error) {
+            console.error('Download error:', error);
+            throw error;
+        }
+    }
+
+    triggerBrowserDownload(blob, fileName) {
+        const blobUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(blobUrl);
+    }
+
+    formatBytes(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    }
+
+    formatSpeed(bytesPerSecond) {
+        if (bytesPerSecond < 1024) return `${bytesPerSecond.toFixed(0)} B/s`;
+        if (bytesPerSecond < 1024 * 1024) return `${(bytesPerSecond / 1024).toFixed(1)} KB/s`;
+        if (bytesPerSecond < 1024 * 1024 * 1024) return `${(bytesPerSecond / (1024 * 1024)).toFixed(1)} MB/s`;
+        return `${(bytesPerSecond / (1024 * 1024 * 1024)).toFixed(1)} GB/s`;
+    }
+
+    formatTime(seconds) {
+        if (seconds < 60) return `${Math.ceil(seconds)}s`;
+        if (seconds < 3600) {
+            const minutes = Math.floor(seconds / 60);
+            const secs = Math.ceil(seconds % 60);
+            return `${minutes}m ${secs}s`;
+        }
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        return `${hours}h ${minutes}m`;
     }
 
     showProperties() {
@@ -1336,8 +1524,15 @@ class FileManager {
 
     showProgressModal(title) {
         document.getElementById('progressTitle').textContent = title;
-        document.getElementById('progressFill').style.width = '50%';
+        document.getElementById('progressFill').style.width = '0%';
+        document.getElementById('progressText').textContent = 'Starting...';
         this.showModal('progressModal');
+    }
+
+    updateProgressModal(title, percentage, text) {
+        document.getElementById('progressTitle').textContent = title;
+        document.getElementById('progressFill').style.width = `${percentage}%`;
+        document.getElementById('progressText').textContent = text;
     }
 
     hideProgressModal() {
