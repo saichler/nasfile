@@ -5,6 +5,14 @@ A professional, secure web-based file manager for NAS systems with a modern dual
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)
 ![Go Version](https://img.shields.io/badge/go-%3E%3D1.21-blue.svg)
 
+## Screenshots
+
+### Login Screen
+![Login Screen](resources/pic-1.png)
+
+### File Manager Interface
+![File Manager](resources/pic-2.png)
+
 ## Features
 
 ### 🎨 Modern User Interface
@@ -19,6 +27,7 @@ A professional, secure web-based file manager for NAS systems with a modern dual
 - Copy, cut, and paste files/folders
 - Rename files and folders
 - Delete files and folders
+- **Download files** directly to your local machine
 - Multi-file selection (Ctrl/Cmd + click, Shift + click)
 - Parent directory navigation
 - Path-based navigation with manual path entry
@@ -151,6 +160,7 @@ nasfile/
   - `delete` - Delete files/folders
   - `rename` - Rename files/folders
   - `newFolder` - Create new folder
+  - `download` - Download files to local machine
 
 All API requests require Bearer token authentication in the header:
 ```
