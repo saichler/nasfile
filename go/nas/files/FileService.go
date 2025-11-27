@@ -21,10 +21,17 @@ const (
 type FileService struct {
 }
 
-func (this *FileService) Activate(serviceName string, serviceArea byte,
-	r ifs.IResources, l ifs.IServiceCacheListener, args ...interface{}) error {
-	r.Registry().Register(&files.File{})
-	r.Registry().Register(&files.FileList{})
+func Activate(vnic ifs.IVNic) {
+	sla := ifs.NewServiceLevelAgreement(&FileService{}, ServiceName, ServiceArea, false, nil)
+	ws := web.New(ServiceName, ServiceArea, &files.File{},
+		&files.FileList{}, nil, nil, nil, nil, nil, nil, nil, nil)
+	sla.SetWebService(ws)
+	vnic.Resources().Services().Activate(sla, vnic)
+}
+
+func (this *FileService) Activate(sla *ifs.ServiceLevelAgreement, vnic ifs.IVNic) error {
+	vnic.Resources().Registry().Register(&files.File{})
+	vnic.Resources().Registry().Register(&files.FileList{})
 	return nil
 }
 

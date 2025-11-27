@@ -27,13 +27,20 @@ const (
 type ActionService struct {
 }
 
-func (this *ActionService) Activate(serviceName string, serviceArea byte,
-	r ifs.IResources, l ifs.IServiceCacheListener, args ...interface{}) error {
-	r.Registry().Register(&files.File{})
-	r.Registry().Register(&files.FileList{})
-	r.Registry().Register(&files.Action{})
-	r.Registry().Register(&files.ActionResponse{})
-	r.Registry().Register(&l8web.L8Empty{})
+func Activate(vnic ifs.IVNic) {
+	sla := ifs.NewServiceLevelAgreement(&ActionService{}, ServiceName, ServiceArea, false, nil)
+	ws := web.New(ServiceName, ServiceArea, &files.Action{},
+		&files.ActionResponse{}, nil, nil, nil, nil, nil, nil, nil, nil)
+	sla.SetWebService(ws)
+	vnic.Resources().Services().Activate(sla, vnic)
+}
+
+func (this *ActionService) Activate(sla *ifs.ServiceLevelAgreement, vnic ifs.IVNic) error {
+	vnic.Resources().Registry().Register(&files.File{})
+	vnic.Resources().Registry().Register(&files.FileList{})
+	vnic.Resources().Registry().Register(&files.Action{})
+	vnic.Resources().Registry().Register(&files.ActionResponse{})
+	vnic.Resources().Registry().Register(&l8web.L8Empty{})
 	return nil
 }
 

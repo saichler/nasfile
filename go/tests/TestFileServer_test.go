@@ -2,11 +2,14 @@ package tests
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
 	"testing"
 	"time"
 
 	"github.com/saichler/l8bus/go/overlay/protocol"
 	"github.com/saichler/l8types/go/types/l8api"
+	"github.com/saichler/l8utils/go/utils/shared"
 	"github.com/saichler/l8web/go/web/client"
 	"github.com/saichler/nasfile/go/nas/server"
 	"github.com/saichler/nasfile/go/types/files"
@@ -14,6 +17,11 @@ import (
 )
 
 func TestFileServer(t *testing.T) {
+	exec.Command("rm", "-rf", "./web").Run()
+	time.Sleep(time.Second * 1)
+	os.CopyFS("./web", os.DirFS("../nas/web/web"))
+	defer exec.Command("rm", "-rf", "./web").Run()
+
 	go server.Start()
 	time.Sleep(time.Second * 5)
 
@@ -62,7 +70,7 @@ func TestFileServer(t *testing.T) {
 }
 
 func createRestClient(t *testing.T, pb interface{}, prefix string) (*client.RestClient, bool) {
-	resources := server.Resources("Client")
+	resources := shared.ResourcesOf("Client", 15151, 0, false)
 	resources.Registry().Register(files.Action{})
 	resources.Registry().Register(files.ActionResponse{})
 	resources.Registry().Register(files.File{})
@@ -74,7 +82,15 @@ func createRestClient(t *testing.T, pb interface{}, prefix string) (*client.Rest
 		TokenRequired: true,
 		CertFileName:  "files.crt",
 		Prefix:        prefix,
-		AuthPaths:     []string{"auth"},
+		AuthInfo: &client.RestAuthInfo{
+			NeedAuth:   true,
+			BodyType:   "AuthUser",
+			UserField:  "User",
+			PassField:  "Pass",
+			RespType:   "AuthToken",
+			TokenField: "Token",
+			AuthPath:   "/auth",
+		},
 	}
 	//resources.Registry().Register(&l8api.AuthToken{})
 	restClient, err := client.NewRestClient(clientConfig, resources)
@@ -83,7 +99,7 @@ func createRestClient(t *testing.T, pb interface{}, prefix string) (*client.Rest
 		return nil, false
 	}
 	resources.Registry().Register(pb)
-	resources.Registry().Register(l8api.AuthToken{})
+	resources.Registry().Register(&l8api.AuthToken{})
 	err = restClient.Auth("admin", "admin")
 	if err != nil {
 		panic(err)
