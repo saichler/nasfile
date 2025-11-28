@@ -117,9 +117,7 @@ cd nas/web
 https://<your-server-ip>:7443/
 ```
 
-4. Default credentials:
-   - Username: `admin`
-   - Password: `Admin123!`
+4. Authentication is handled by the Layer 8 framework. Configure credentials according to your Layer 8 security setup.
 
 ## Project Structure
 
@@ -160,7 +158,7 @@ nasfile/
   - `delete` - Delete files/folders
   - `rename` - Rename files/folders
   - `newFolder` - Create new folder
-  - `download` - Download files to local machine
+- `GET /files/download?path=<filepath>` - Download a file to local machine
 
 All API requests require Bearer token authentication in the header:
 ```
@@ -182,18 +180,16 @@ serverConfig := &server.RestServerConfig{
 }
 ```
 
-### User Credentials
-Default user is configured in `go/nas/server/server.go`:
+### User Authentication
+User authentication is managed by the Layer 8 framework's security module. The server initializes resources using:
 ```go
-res := resources.NewResourcesWithUser(log, &l8api.AuthUser{
-    User: "admin",
-    Pass: "Admin123!"
-})
+r := shared.ResourcesOf("vnet-nas", vnetPort, 0, false)
 ```
+Configure user credentials according to your Layer 8 security setup.
 
 ## Security Considerations
 
-1. **Change default credentials** in production
+1. **Configure secure credentials** via the Layer 8 framework
 2. **Use valid SSL/TLS certificates** (not self-signed)
 3. **Implement proper user management** for multi-user scenarios
 4. **Set appropriate file system permissions**
