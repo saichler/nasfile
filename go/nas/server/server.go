@@ -16,10 +16,10 @@
 package server
 
 import (
+	"github.com/saichler/l8utils/go/utils/ipsegment"
 	"net/http"
 	"time"
 
-	"github.com/saichler/l8bus/go/overlay/protocol"
 	"github.com/saichler/l8bus/go/overlay/vnet"
 	"github.com/saichler/l8bus/go/overlay/vnic"
 	"github.com/saichler/l8types/go/ifs"
@@ -33,7 +33,7 @@ import (
 func Start() {
 	server.Timeout = 600
 	vnetPort := uint32(15151)
-	r := shared.ResourcesOf("vnet-nas", vnetPort, 0, false)
+	r := shared.ResourcesOf("vnet-nas", vnetPort, 0, "")
 	r.Logger().SetLogLevel(ifs.Info_Level)
 	net := vnet.NewVNet(r)
 	net.Start()
@@ -46,7 +46,7 @@ func Start() {
 
 func startWebServer(port int, vnetPort uint32, cert string) {
 	serverConfig := &server.RestServerConfig{
-		Host:           protocol.MachineIP,
+		Host:           ipsegment.MachineIP,
 		Port:           port,
 		Authentication: true,
 		CertName:       cert,
@@ -57,7 +57,7 @@ func startWebServer(port int, vnetPort uint32, cert string) {
 		panic(err)
 	}
 
-	r := shared.ResourcesOf("web-nas", vnetPort, 0, false)
+	r := shared.ResourcesOf("web-nas", vnetPort, 0, "")
 
 	r.Registry().Register(&files.File{})
 	r.Registry().Register(&files.FileList{})

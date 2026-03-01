@@ -40,12 +40,13 @@ const (
 )
 
 type ActionService struct {
+	sla *ifs.ServiceLevelAgreement
 }
 
 func Activate(vnic ifs.IVNic) {
 	sla := ifs.NewServiceLevelAgreement(&ActionService{}, ServiceName, ServiceArea, false, nil)
-	ws := web.New(ServiceName, ServiceArea, &files.Action{},
-		&files.ActionResponse{}, nil, nil, nil, nil, nil, nil, nil, nil)
+	ws := web.New(ServiceName, ServiceArea, 0)
+	ws.AddEndpoint(&files.Action{}, ifs.POST, &files.ActionResponse{})
 	sla.SetWebService(ws)
 	vnic.Resources().Services().Activate(sla, vnic)
 }
@@ -56,6 +57,7 @@ func (this *ActionService) Activate(sla *ifs.ServiceLevelAgreement, vnic ifs.IVN
 	vnic.Resources().Registry().Register(&files.Action{})
 	vnic.Resources().Registry().Register(&files.ActionResponse{})
 	vnic.Resources().Registry().Register(&l8web.L8Empty{})
+	this.sla = sla
 	return nil
 }
 
@@ -242,9 +244,7 @@ func (this *ActionService) TransactionConfig() ifs.ITransactionConfig {
 }
 
 func (this *ActionService) WebService() ifs.IWebService {
-	ws := web.New(ServiceName, ServiceArea, &files.Action{},
-		&files.ActionResponse{}, nil, nil, nil, nil, nil, nil, nil, nil)
-	return ws
+	return this.sla.WebService()
 }
 
 // DownloadHandler handles file download requests

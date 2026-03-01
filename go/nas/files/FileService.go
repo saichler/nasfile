@@ -34,12 +34,13 @@ const (
 )
 
 type FileService struct {
+	sla *ifs.ServiceLevelAgreement
 }
 
 func Activate(vnic ifs.IVNic) {
 	sla := ifs.NewServiceLevelAgreement(&FileService{}, ServiceName, ServiceArea, false, nil)
-	ws := web.New(ServiceName, ServiceArea, &files.File{},
-		&files.FileList{}, nil, nil, nil, nil, nil, nil, nil, nil)
+	ws := web.New(ServiceName, ServiceArea, 0)
+	ws.AddEndpoint(&files.File{}, ifs.POST, &files.FileList{})
 	sla.SetWebService(ws)
 	vnic.Resources().Services().Activate(sla, vnic)
 }
@@ -47,6 +48,7 @@ func Activate(vnic ifs.IVNic) {
 func (this *FileService) Activate(sla *ifs.ServiceLevelAgreement, vnic ifs.IVNic) error {
 	vnic.Resources().Registry().Register(&files.File{})
 	vnic.Resources().Registry().Register(&files.FileList{})
+	this.sla = sla
 	return nil
 }
 
@@ -111,9 +113,7 @@ func (this *FileService) TransactionConfig() ifs.ITransactionConfig {
 }
 
 func (this *FileService) WebService() ifs.IWebService {
-	ws := web.New(ServiceName, ServiceArea, &files.File{},
-		&files.FileList{}, nil, nil, nil, nil, nil, nil, nil, nil)
-	return ws
+	return this.sla.WebService()
 }
 
 func Space(path string) (totalSpace uint64, freeSpace uint64, err error) {
